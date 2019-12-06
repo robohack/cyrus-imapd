@@ -2123,7 +2123,7 @@ static int getcalendarevents_cb(void *vrock, struct caldav_data *cdata)
     }
 
     /* Open calendar mailbox. */
-    if (!rock->mailbox || strcmp(rock->mailbox->uniqueid, rock->mbentry->uniqueid)) {
+    if (!rock->mailbox || strcmp(mailbox_uniqueid(rock->mailbox), rock->mbentry->uniqueid)) {
         jmap_closembox(req, &rock->mailbox);
         r = jmap_openmbox_by_uniqueid(req, rock->mbentry->uniqueid, &rock->mailbox, 0);
         if (r) goto done;
@@ -2165,7 +2165,7 @@ static int getcalendarevents_cb(void *vrock, struct caldav_data *cdata)
     mr = msgrecord_from_uid(rock->mailbox, cdata->dav.imap_uid);
     if (!mr) {
         syslog(LOG_ERR, "msgrecord_from_uid failed for %s:%d",
-                rock->mailbox->name, cdata->dav.imap_uid);
+                mailbox_name(rock->mailbox), cdata->dav.imap_uid);
         r = IMAP_INTERNAL;
         goto done;
     }
@@ -2173,7 +2173,7 @@ static int getcalendarevents_cb(void *vrock, struct caldav_data *cdata)
     r = msgrecord_get_systemflags(mr, &system_flags);
     if (r) {
         syslog(LOG_ERR, "msgrecord_get_systemflags failed for %s:%d: %s",
-                rock->mailbox->name, cdata->dav.imap_uid, error_message(r));
+                mailbox_name(rock->mailbox), cdata->dav.imap_uid, error_message(r));
         goto done;
     }
     json_object_set_new(jsevent, "isDraft", json_boolean(system_flags & FLAG_DRAFT));
