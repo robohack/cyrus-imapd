@@ -1077,8 +1077,14 @@ static int caldav_parse_path(const char *path, struct request_target_t *tgt,
 }
 
 
+/* Strip per-user data to personalize iCalendar resource.
+ *
+ * COLOR and CATEGORIES properties are not stripped.
+ * Instead, they are added to the per-user VPATCH when the
+ * user overwrites them in their copy of the resource.
+ */
 #define STRIP_OWNER_CAL_DATA              \
-    "CALDATA %(VPATCH {248+}\r\n"         \
+    "CALDATA %(VPATCH {287+}\r\n"         \
     "BEGIN:VPATCH\r\n"                    \
     "VERSION:1\r\n"                       \
     "DTSTAMP:19760401T005545Z\r\n"        \
@@ -1089,6 +1095,7 @@ static int caldav_parse_path(const char *path, struct request_target_t *tgt,
     "PATCH-DELETE:#TRANSP\r\n"            \
     "PATCH-DELETE:#X-MOZ-LASTACK\r\n"     \
     "PATCH-DELETE:#X-MOZ-SNOOZE-TIME\r\n" \
+    "PATCH-DELETE:#X-JMAP-USEDEFAULTALERTS\r\n" \
     "END:PATCH\r\n"                       \
     "END:VPATCH\r\n)"
 
@@ -3988,9 +3995,10 @@ static int extract_personal_data(icalcomponent *ical, icalcomponent *oldical,
 
             case ICAL_X_PROPERTY:
                 xname = icalproperty_get_x_name(prop);
-                if (strncmp(xname, "X-MOZ-", 6) ||
-                    (strcmp(xname+6, "LASTACK") &&
-                     strcmp(xname+6, "SNOOZE-TIME"))) {
+                if (strcmp(xname, "X-JMAP-USEDEFAULTALERTS") &&
+                    (strncmp(xname, "X-MOZ-", 6) ||
+                     (strcmp(xname+6, "LASTACK") &&
+                      strcmp(xname+6, "SNOOZE-TIME")))) {
                     if (read_only) return HTTP_FORBIDDEN;
                     if (num_changes) (*num_changes)++;
                     break;
@@ -3999,6 +4007,8 @@ static int extract_personal_data(icalcomponent *ical, icalcomponent *oldical,
                 GCC_FALLTHROUGH
 
             case ICAL_TRANSP_PROPERTY:
+            case ICAL_COLOR_PROPERTY:
+            case ICAL_CATEGORIES_PROPERTY:
                 /* Add per-user property to VPATCH */
                 if (!patch) {
                     patch = icalcomponent_vanew(ICAL_XPATCH_COMPONENT,
