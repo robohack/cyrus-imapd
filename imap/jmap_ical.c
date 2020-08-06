@@ -4731,8 +4731,7 @@ overrides_to_ical(icalcomponent *comp,
                     !strcmp(key, "recurrenceId") ||
                     !strcmp(key, "recurrenceRule") ||
                     !strcmp(key, "recurrenceOverrides") ||
-                    !strcmp(key, "replyTo") ||
-                    !strcmp(key, "participantId")) {
+                    !strcmp(key, "replyTo")) {
 
                     json_object_del(myoverride, key);
                 }
@@ -5115,8 +5114,6 @@ static void calendarevent_to_ical(icalcomponent *comp,
 
     /* replyTo and participants */
     participants_to_ical(comp, parser, event, oldcomps);
-
-    /* participantId: readonly */
 
     /* useDefaultAlerts */
     jprop = json_object_get(event, "useDefaultAlerts");
