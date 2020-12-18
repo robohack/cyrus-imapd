@@ -1138,7 +1138,7 @@ HIDDEN int caldav_is_personalized(struct mailbox *mailbox,
                                   const char *userid,
                                   struct buf *userdata)
 {
-    if (caldav_is_secretarymode(mailbox->name)) return 0;
+    if (caldav_is_secretarymode(mailbox_name(mailbox))) return 0;
 
     if (cdata->comp_flags.shared) {
         /* Lookup per-user calendar data */
@@ -2041,7 +2041,7 @@ static int caldav_delete_cal(struct transaction_t *txn,
     if (ical) {
         icalcomponent *comp = icalcomponent_get_first_real_component(ical);
         if (comp && icalcomponent_isa(comp) == ICAL_VEVENT_COMPONENT) {
-            int r2 = jmap_create_caldaveventnotif(txn, mailbox->name,
+            int r2 = jmap_create_caldaveventnotif(txn, mailbox_name(mailbox),
                     cdata->ical_uid, &schedule_addresses, is_draft, ical, NULL);
             if (r2) {
                 xsyslog(LOG_ERR, "jmap_create_caldaveventnotif failed",
@@ -4942,7 +4942,7 @@ static int caldav_put(struct transaction_t *txn, void *obj,
                 oldical = caldav_record_to_ical(mailbox, cdata,
                         NULL, NULL);
             }
-            int r2 = jmap_create_caldaveventnotif(txn, mailbox->name, uid,
+            int r2 = jmap_create_caldaveventnotif(txn, mailbox_name(mailbox), uid,
                     &schedule_addresses, is_draft, oldical, ical);
             if (r2) {
                 xsyslog(LOG_ERR, "jmap_create_caldaveventnotif failed",
@@ -7812,8 +7812,8 @@ static int proppatch_shareesactas(xmlNodePtr prop, unsigned set,
     int is_valid = 0;
 
     if (!pctx->txn->req_tgt.collection && pctx->txn->req_tgt.userid) {
-        int have_rights = mboxname_userownsmailbox(httpd_userid, pctx->mailbox->name) ||
-                    (cyrus_acl_myrights(httpd_authstate, pctx->mailbox->acl) & DACL_ADMIN);
+        int have_rights = mboxname_userownsmailbox(httpd_userid, mailbox_name(pctx->mailbox)) ||
+                    (cyrus_acl_myrights(httpd_authstate, mailbox_acl(pctx->mailbox)) & DACL_ADMIN);
         if (have_rights) {
             xmlChar *freeme = xmlNodeGetContent(prop);
             const char *val = (const char *) freeme;
@@ -8909,7 +8909,7 @@ int caldav_store_resource(struct transaction_t *txn, icalcomponent *ical,
     uint32_t newuid = 0;
     strarray_t myimapflags = STRARRAY_INITIALIZER;
     int usedefaultalerts = 0; // for per-user data
-    int is_secretarymode = caldav_is_secretarymode(mailbox->name);
+    int is_secretarymode = caldav_is_secretarymode(mailbox_name(mailbox));
 
     /* Copy add_imapflags, we might need to add some flags */
     if (add_imapflags) strarray_cat(&myimapflags, add_imapflags);

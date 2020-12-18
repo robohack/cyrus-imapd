@@ -2226,7 +2226,7 @@ static int roleupdate_exec(jmap_req_t *req,
     }
     if (!new_inboxid) {
         /* Pick any */
-        mboxlist_mboxtree(calhome->name, roleupdate_pickany_inboxid_cb,
+        mboxlist_mboxtree(mailbox_name(calhome), roleupdate_pickany_inboxid_cb,
                           &new_inboxid, MBOXTREE_SKIP_ROOT);
     }
     if (!new_inboxid) {
@@ -4219,9 +4219,9 @@ static int append_eventnotif(const char *from,
     }
     buf_reset(&buf);
 
-    FILE *fp = append_newstage(notifmbox->name, created, 0, &stage);
+    FILE *fp = append_newstage(mailbox_name(notifmbox), created, 0, &stage);
     if (!fp) {
-        xsyslog(LOG_ERR, "append_newstage failed", "name=%s", notifmbox->name);
+        xsyslog(LOG_ERR, "append_newstage failed", "name=%s", mailbox_name(notifmbox));
         r = HTTP_SERVER_ERROR;
         goto done;
     }
@@ -4698,7 +4698,7 @@ static int setcalendarevents_create(jmap_req_t *req,
         if (!r) {
             json_t *event_copy = json_deep_copy(event);
             remove_peruserprops(event_copy);
-            int r2 = create_eventnotif(req, notifmbox, mbox->name, "created", uid,
+            int r2 = create_eventnotif(req, notifmbox, mailbox_name(mbox), "created", uid,
                     &schedule_addresses, NULL, is_draft, event_copy, NULL);
             if (r2) {
                 xsyslog(LOG_WARNING, "could not create notification",
@@ -5459,7 +5459,7 @@ static int setcalendarevents_update(jmap_req_t *req,
             remove_peruserprops(patch_copy);
             remove_peruserprops(old_event);
             if (json_object_size(patch_copy)) {
-                int r2 = create_eventnotif(req, notifmbox, mbox->name,
+                int r2 = create_eventnotif(req, notifmbox, mailbox_name(mbox),
                         "updated", eid->uid, &schedule_addresses, NULL,
                         record.system_flags & FLAG_DRAFT, old_event, patch_copy);
                 if (r2) {
@@ -5634,7 +5634,7 @@ static int setcalendarevents_destroy(jmap_req_t *req,
     json_t *old_event = jmapical_tojmap(oldical, NULL, &jmapctx);
     json_object_del(old_event, "updated");
     remove_peruserprops(old_event);
-    int r2 = create_eventnotif(req, notifmbox, mbox->name, "destroyed", eid->uid,
+    int r2 = create_eventnotif(req, notifmbox, mailbox_name(mbox), "destroyed", eid->uid,
             &schedule_addresses, NULL,
             record.system_flags & FLAG_DRAFT, old_event, NULL);
     if (r2) {
@@ -7523,7 +7523,7 @@ static int principal_state_init(jmap_req_t *req, SHA_CTX *sha1)
     int r = jmap_openmbox(req, calhomename, &mbox, 0);
     if (!r) {
         struct buf buf = BUF_INITIALIZER;
-        buf_printf(&buf, "%s" MODSEQ_FMT, req->userid, mbox->foldermodseq);
+        buf_printf(&buf, "%s" MODSEQ_FMT, req->userid, mailbox_foldermodseq(mbox));
         SHA1_Update(sha1, buf_base(&buf), buf_len(&buf));
         buf_free(&buf);
     }
@@ -8225,7 +8225,7 @@ static int jmap_calendarprincipal_set(struct jmap_req *req)
         const char *tzid = json_string_value(json_object_get(jarg, "timeZone"));
         if (tzid) {
             icaltimezone *tz;
-            if ((tz = icaltimezone_lookup_tzid(tzid))) {
+            if ((tz = icaltimezone_get_cyrus_timezone_from_tzid(tzid))) {
                 char *calhomename = caldav_mboxname(req->userid, NULL);
                 struct mailbox *mbox = NULL;
                 int r = jmap_openmbox(req, calhomename, &mbox, 1);
@@ -8467,7 +8467,7 @@ static int principal_getavailability_cb(void *vrock, struct caldav_data *cdata)
         }
     }
 
-    if (!rock->mbox || strcmp(rock->mbox->uniqueid, rock->mbentry->uniqueid)) {
+    if (!rock->mbox || strcmp(mailbox_uniqueid(rock->mbox), rock->mbentry->uniqueid)) {
         /* reset state for calendar collection */
         if (rock->mbox) {
             jmap_closembox(rock->req, &rock->mbox);
@@ -8856,7 +8856,7 @@ static struct seqset *_readseen(struct mailbox *mbox, const char *userid)
     int r = seen_open(userid, SEEN_SILENT, &seendb);
     if (!r) {
         struct seendata sd = SEENDATA_INITIALIZER;
-        r = seen_read(seendb, mbox->uniqueid, &sd);
+        r = seen_read(seendb, mailbox_uniqueid(mbox), &sd);
         if (!r) {
             seenuids = seqset_parse(sd.seenuids, NULL, sd.lastuid);
             seen_freedata(&sd);
@@ -9192,7 +9192,7 @@ static void notif_set(struct jmap_req *req,
             goto done;
         }
         struct seendata sd = SEENDATA_INITIALIZER;
-        r = seen_lockread(seendb, notifmbox->uniqueid, &sd);
+        r = seen_lockread(seendb, mailbox_uniqueid(notifmbox), &sd);
         if (r) {
             buf_setcstr(&buf, "can not read seen.db: ");
             buf_appendcstr(&buf, error_message(r));
@@ -9250,7 +9250,7 @@ static void notif_set(struct jmap_req *req,
         sd.lastread = time(NULL);
         sd.lastchange = sd.lastread;
         sd.lastuid = seqset_last(seenuids);
-        r = seen_write(seendb, notifmbox->uniqueid, &sd);
+        r = seen_write(seendb, mailbox_uniqueid(notifmbox), &sd);
         seen_freedata(&sd);
         if (r) {
             buf_setcstr(&buf, "can not write seen.db: ");
