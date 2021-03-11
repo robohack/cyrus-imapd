@@ -3293,7 +3293,7 @@ static int getcalendarevents_cb(void *vrock, struct caldav_data *cdata)
         r = IMAP_INTERNAL;
         goto done;
     }
-    jstzones = jstimezones_new(ical);
+    jstzones = jstimezones_new(ical); // FIXME called twice, also in _tojmap below
 
     /* Convert to JMAP */
     jsevent = jmapical_tojmap(ical, NULL, &jmapctx);
@@ -3303,8 +3303,6 @@ static int getcalendarevents_cb(void *vrock, struct caldav_data *cdata)
         r = IMAP_INTERNAL;
         goto done;
     }
-    icalcomponent_free(ical);
-    ical = NULL;
 
     /* Add isDraft to cached event, we remove it later if not requested */
     mr = msgrecord_from_uid(rock->mailbox, cdata->dav.imap_uid);
