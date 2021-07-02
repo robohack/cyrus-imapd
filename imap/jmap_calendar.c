@@ -4740,14 +4740,14 @@ static int setcalendarevents_create(jmap_req_t *req,
 
     if (jmap_is_using(req, JMAP_CALENDARS_EXTENSION)) {
         struct buf blobid = BUF_INITIALIZER;
-        if (jmap_encode_rawdata_blobid('I', mailbox_uniqueid(mbox), mbox->i.last_uid,
-                                       req->userid, NULL, NULL, &blobid)) {
+        if (jmap_encode_rawdata_blobid('I', mailbox_uniqueid(mbox),
+                    mbox->i.last_uid, req->userid, NULL, NULL, &blobid)) {
             json_object_set_new(create, "blobId",
                                 json_string(buf_cstring(&blobid)));
         }
         buf_reset(&blobid);
-        if (jmap_encode_rawdata_blobid('I', mailbox_uniqueid(mbox), mbox->i.last_uid,
-                                       NULL, NULL, NULL, &blobid)) {
+        if (jmap_encode_rawdata_blobid('I', mailbox_uniqueid(mbox),
+                    mbox->i.last_uid, NULL, NULL, NULL, &blobid)) {
             json_object_set_new(create, "debugBlobId",
                                 json_string(buf_cstring(&blobid)));
         }
@@ -5522,14 +5522,14 @@ static int setcalendarevents_update(jmap_req_t *req,
 
     if (jmap_is_using(req, JMAP_CALENDARS_EXTENSION)) {
         struct buf blobid = BUF_INITIALIZER;
-        if (jmap_encode_rawdata_blobid('I', mailbox_uniqueid(mbox), mbox->i.last_uid,
-                                       req->userid, NULL, NULL, &blobid)) {
+        if (jmap_encode_rawdata_blobid('I', mailbox_uniqueid(mbox),
+                    mbox->i.last_uid, req->userid, NULL, NULL, &blobid)) {
             json_object_set_new(update, "blobId",
                                 json_string(buf_cstring(&blobid)));
         }
         buf_reset(&blobid);
-        if (jmap_encode_rawdata_blobid('I', mailbox_uniqueid(mbox), mbox->i.last_uid,
-                                       NULL, NULL, NULL, &blobid)) {
+        if (jmap_encode_rawdata_blobid('I', mailbox_uniqueid(mbox),
+                    mbox->i.last_uid, NULL, NULL, NULL, &blobid)) {
             json_object_set_new(update, "debugBlobId",
                                 json_string(buf_cstring(&blobid)));
         }
