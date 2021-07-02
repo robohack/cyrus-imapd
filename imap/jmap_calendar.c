@@ -5679,8 +5679,8 @@ static int setcalendarevents_destroy(jmap_req_t *req,
     json_t *old_event = jmapical_tojmap(oldical, NULL, &jmapctx);
     json_object_del(old_event, "updated");
     remove_peruserprops(old_event);
-    int r2 = create_eventnotif(req, notifmbox, mailbox_name(mbox), "destroyed", eid->uid,
-            &schedule_addresses, NULL,
+    int r2 = create_eventnotif(req, notifmbox, mailbox_name(mbox),
+            "destroyed", eid->uid, &schedule_addresses, NULL,
             record.system_flags & FLAG_DRAFT, old_event, NULL);
     if (r2) {
         xsyslog(LOG_WARNING, "could not create notification",
