@@ -2084,6 +2084,18 @@ static json_t *participant_from_ical(icalproperty *prop,
         json_object_set_new(p, "scheduleStatus", jschedstat);
     }
 
+    /* invitedBy */
+    const char *invitedby;
+    if ((invitedby = get_icalxparam_value(prop, JMAPICAL_XPARAM_INVITEDBY))) {
+        const char *invitedbyid = NULL;
+        if (id_by_uri) {
+            invitedbyid = hash_lookup(invitedby, id_by_uri);
+        }
+        if (invitedbyid) {
+            json_object_set_new(p, "invitedBy", json_string(invitedbyid));
+        }
+    }
+
     buf_free(&buf);
     return p;
 }
@@ -4020,8 +4032,6 @@ participant_to_ical(icalcomponent *comp,
     int is_orga = orga_uri ? match_uri(caladdress, orga_uri) : 0;
     if (is_orga) set_icalxparam(orga, JMAPICAL_XPARAM_ID, partid, 1);
 
-    /* FIXME invitedBy */
-
     /* name */
     json_t *jname = json_object_get(jpart, "name");
     if (json_is_string(jname)) {
@@ -4074,6 +4084,20 @@ participant_to_ical(icalcomponent *comp,
     }
     else if (JNOTNULL(sendTo)) {
         jmap_parser_invalid(parser, "sendTo");
+    }
+
+    /* invitedBy */
+    json_t *invitedBy = json_object_get(jpart, "invitedBy");
+    if (json_is_string(invitedBy)) {
+        const char *val = hash_lookup(json_string_value(invitedBy),
+                caladdress_by_participant_id);
+        if (val) {
+            set_icalxparam(prop, JMAPICAL_XPARAM_INVITEDBY, val, 1);
+        }
+        else jmap_parser_invalid(parser, "invitedBy");
+    }
+    else if (JNOTNULL(invitedBy)) {
+        jmap_parser_invalid(parser, "invitedBy");
     }
 
     /* email */
