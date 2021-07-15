@@ -3580,7 +3580,51 @@ startend_to_ical(icalcomponent *comp, struct jmap_parser *parser,
         jmap_parser_invalid(parser, "start");
     }
 
+    /* recurrenceIdTime */
+    struct jmapical_datetime recurid = JMAPICAL_DATETIME_INITIALIZER;
+    jprop = json_object_get(event, "recurrenceId");
+    if (json_is_string(jprop)) {
+        if (jmapical_localdatetime_from_string(json_string_value(jprop), &recurid) < 0) {
+            jmap_parser_invalid(parser, "recurrenceId");
+        }
+    } else if (JNOTNULL(jprop)) {
+        jmap_parser_invalid(parser, "recurrenceId");
+    }
+
+    /* recurrenceIdTimeZone */
+    icaltimezone *tzrecurid = NULL;
+    jprop = json_object_get(event, "recurrenceIdTimeZone");
+    if (json_is_string(jprop)) {
+        const char *jstzid = json_string_value(jprop);
+        tzrecurid = jstimezones_lookup_jstzid(jstzones, jstzid);
+        if (!tzrecurid) {
+            jmap_parser_invalid(parser, "recurrenceIdTimeZone");
+        }
+    } else if (JNOTNULL(jprop)) {
+        jmap_parser_invalid(parser, "recurrenceIdTimeZone");
+    }
+
     /* Bail out for property errors */
+    if (json_array_size(parser->invalid))
+        return;
+
+    /* Check sanity of recurrence properties */
+    if (JNOTNULL(json_object_get(event, "recurrenceId")) !=
+        JNOTNULL(json_object_get(event, "recurrenceIdTimeZone"))) {
+        jmap_parser_invalid(parser, "recurrenceId");
+        jmap_parser_invalid(parser, "recurrenceIdTimeZone");
+    }
+    if (JNOTNULL(json_object_get(event, "recurrenceId"))) {
+        if (JNOTNULL(json_object_get(event, "recurrenceRules"))) {
+            jmap_parser_invalid(parser, "recurrenceRules");
+        }
+        if (JNOTNULL(json_object_get(event, "excludedRecurrenceRules"))) {
+            jmap_parser_invalid(parser, "excludedRecurrenceRules");
+        }
+        if (JNOTNULL(json_object_get(event, "recurrenceOverrides"))) {
+            jmap_parser_invalid(parser, "recurrenceOverrides");
+        }
+    }
     if (json_array_size(parser->invalid))
         return;
 
@@ -3592,7 +3636,8 @@ startend_to_ical(icalcomponent *comp, struct jmap_parser *parser,
     /* Add DTSTART */
     int is_date = 0;
     if (!tzstart && !tzend && jmapical_datetime_has_zero_time(&start) &&
-            jmapical_duration_has_zero_time(&dur)) {
+            jmapical_duration_has_zero_time(&dur) &&
+            jmapical_datetime_has_zero_time(&recurid)) {
         /* Determine if to store DTSTART as DATE type */
         is_date = 1;
         /* Check recurrence frequency */
@@ -3644,6 +3689,14 @@ startend_to_ical(icalcomponent *comp, struct jmap_parser *parser,
         struct icaldurationtype icaldur = jmapical_duration_to_icalduration(&dur);
         icalproperty *prop = icalproperty_new_duration(icaldur);
         icalcomponent_add_property(comp, prop);
+    }
+
+    if (json_object_get(event, "recurrenceId")) {
+        /* Add RECURRENCE-ID */
+        struct icaltimetype icalrecurid = is_date ?
+            jmapical_datetime_to_icaldate(&recurid) :
+            jmapical_datetime_to_icaltime(&recurid, tzrecurid);
+        insert_icaltimeprop(comp, icalrecurid, 1, ICAL_RECURRENCEID_PROPERTY);
     }
 
     json_t *jshowWithoutTime = json_object_get(event, "showWithoutTime");
@@ -6115,7 +6168,7 @@ static void calendarevent_to_ical(icalcomponent *comp,
     icaltimezone *utc = icaltimezone_get_utc_timezone();
     jstimezones_t myjstzones = JSTIMEZONES_INITIALIZER;
 
-    /* Caller must set UID and RECURRENCEID in iCalendar */
+    /* Caller must set UID */
     const char *uid = icalcomponent_get_uid(comp);
     if (!uid) {
         jmap_parser_invalid(parser, "uid");
@@ -6150,7 +6203,7 @@ static void calendarevent_to_ical(icalcomponent *comp,
         jstzones = &myjstzones;
     }
 
-    /* start, duration, timeZone */
+    /* start, duration, timeZone, recurrenceId, recurrenceIdTimeZone */
     startend_to_ical(comp, parser, event, jstzones);
 
     /* relatedTo */
