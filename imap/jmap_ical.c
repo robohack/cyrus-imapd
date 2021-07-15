@@ -3268,6 +3268,37 @@ calendarevent_from_ical(icalcomponent *comp, hash_table *props,
                         tzid_start, jstzones, jmapctx));
         }
 
+        /* recurrenceId */
+        /* recurrenceIdTimeZone */
+        if ((jmap_wantprop(props, "recurrenceId") ||
+             jmap_wantprop(props, "recurrenceIdTimeZone"))) {
+
+            prop = icalcomponent_get_first_property(comp, ICAL_RECURRENCEID_PROPERTY);
+
+            if (prop) {
+                if (jmap_wantprop(props, "recurrenceId")) {
+                    struct jmapical_datetime recurid = JMAPICAL_DATETIME_INITIALIZER;
+                    icaltimetype icalrecurid = icalproperty_get_recurrenceid(prop);
+                    jmapical_datetime_from_icaltime(icalrecurid, &recurid);
+                    jmapical_localdatetime_as_string(&recurid, &buf);
+                    json_object_set_new(event, "recurrenceId", json_string(buf_cstring(&buf)));
+                    buf_reset(&buf);
+                }
+                if (jmap_wantprop(props, "recurrenceIdTimeZone")) {
+                    icalparameter *param = icalproperty_get_first_parameter(prop, ICAL_TZID_PARAMETER);
+                    const char *tzid = param ? icalparameter_get_tzid(param) : NULL;
+                    const char *jstzid = jstimezones_get_jstzid(jstzones, tzid);
+                    json_object_set_new(event, "recurrenceIdTimeZone",
+                            jstzid ? json_string(jstzid) : json_null());
+                }
+
+                // just in case of bogus iCalendar data
+                json_object_del(event, "recurrenceRules");
+                json_object_del(event, "excludedRecurrenceRules");
+                json_object_del(event, "recurrenceOverrides");
+            }
+        }
+
         /* timeZones - requires overrides set in the event already */
         if (jmap_wantprop(props, "timeZones")) {
             json_t *jtimezones = timezones_from_ical(event, jstzones);
