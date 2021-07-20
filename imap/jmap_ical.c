@@ -51,6 +51,10 @@
 #include <syslog.h>
 #include <assert.h>
 
+#ifdef HAVE_GUESSTZ
+#include <guesstz.h>
+#endif
+
 #include "acl.h"
 #include "annotate.h"
 #include "append.h"
@@ -58,7 +62,6 @@
 #include "carddav_db.h"
 #include "dynarray.h"
 #include "global.h"
-#include "guesstz.h"
 #include "hash.h"
 #include "httpd.h"
 #include "http_caldav.h"
@@ -558,19 +561,32 @@ static void jstimezones_add_vtimezones(jstimezones_t *jstzones, icalcomponent *i
     }
     if (!count) return;
 
+#ifdef HAVE_GUESSTZ
     /* Determine the timespan of the event */
+    const icaltimezone *utc = icaltimezone_get_utc_timezone();
     unsigned is_recurring = 0;
     icalcomponent *comp = icalcomponent_get_first_real_component(ical);
     if (!comp) return;
     struct icalperiodtype span = icalrecurrenceset_get_utc_timespan(ical,
             icalcomponent_isa(comp), NULL, &is_recurring, NULL, NULL);
+    if (icaltime_as_timet_with_zone(span.end, utc) == caldav_epoch) {
+        span.end = icaltime_null_time();
+    }
 
     /* Open database to guess IANA timezones */
-    struct guesstzdb *gtzdb =
-        guesstz_open(config_getstring(IMAPOPT_JMAP_GUESSTZ_FNAME), 0);
-    if (!gtzdb) {
-        xsyslog(LOG_ERR, "can't open guesstz database", NULL);
+    guesstz_t *gtz = NULL;
+    if (config_getstring(IMAPOPT_ZONEINFO_DIR)) {
+        char *fname = strconcat(config_getstring(IMAPOPT_ZONEINFO_DIR),
+                                "/guesstz.db", NULL);
+        gtz = guesstz_open(fname);
+        free(fname);
+        if (guesstz_error(gtz)) {
+            xsyslog(LOG_ERR, "can't open guesstz database",
+                    "err<%s>", guesstz_error(gtz));
+            guesstz_close(&gtz);
+        }
     }
+#endif
 
     /* Process custom timezones */
 
@@ -603,9 +619,13 @@ static void jstimezones_add_vtimezones(jstimezones_t *jstzones, icalcomponent *i
         /* Determine timezone name */
         const char *jstzid = get_icalxprop_value(myvtz, JMAPICAL_XPROP_ID);
         if (!jstzid) {
-            if (gtzdb) {
-                guesstz_toiana(gtzdb, &idbuf, myvtz, span, is_recurring);
+#ifdef HAVE_GUESSTZ
+            if (gtz) {
+                char *ianaid = guesstz_guess(gtz, myvtz, span.start, span.end);
+                if (ianaid) buf_setcstr(&idbuf, ianaid);
+                free(ianaid);
             }
+#endif
             if (!buf_len(&idbuf)) {
                 buf_putc(&idbuf, '/');
                 buf_appendcstr(&idbuf, tzid);
@@ -624,7 +644,9 @@ static void jstimezones_add_vtimezones(jstimezones_t *jstzones, icalcomponent *i
         ptrarray_append(&jstzones->tzs, tz);
     }
 
-    guesstz_close(&gtzdb);
+#ifdef HAVE_GUESSTZ
+    guesstz_close(&gtz);
+#endif
     buf_free(&idbuf);
 }
 
