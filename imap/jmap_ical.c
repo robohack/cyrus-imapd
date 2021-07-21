@@ -4463,11 +4463,11 @@ participant_to_ical(icalcomponent *comp,
             free(tmp);
         }
         else {
-            jmap_parser_invalid(parser, "scheduleSequence");
+            jmap_parser_invalid(parser, "scheduleUpdated");
         }
     }
     else if (JNOTNULL(scheduleUpdated)) {
-        jmap_parser_invalid(parser, "scheduleSequence");
+        jmap_parser_invalid(parser, "scheduleUpdated");
     }
 
     /* scheduleAgent */
