@@ -2690,6 +2690,7 @@ struct getcalendarevents_rock {
     struct jmapical_datetime overrides_before;
     struct jmapical_datetime overrides_after;
     int reduce_participants;
+    const char *sched_userid;
 };
 
 struct recurid_instanceof_rock {
@@ -3253,6 +3254,9 @@ static int getcalendarevents_cb(void *vrock, struct caldav_data *cdata)
         }
         mbname_free(&rock->mbname);
         rock->mbname = mbname_from_intname(rock->mbentry->name);
+
+        rock->sched_userid = caldav_is_secretarymode(rock->mbentry->name) ?
+            req->accountid : req->userid;
     }
 
     /* Check mailbox ACL rights */
@@ -3429,7 +3433,7 @@ gotevent:
     /* reduceParticipants */
     if (rock->reduce_participants) {
         if (strarray_size(&schedule_addresses) == 0) {
-            get_schedule_addresses(NULL, rock->mbentry->name, req->userid,
+            get_schedule_addresses(NULL, rock->mbentry->name, rock->sched_userid,
                                    &schedule_addresses);
         }
         json_t *jparticipants = json_object_get(jsevent, "participants");
@@ -3812,7 +3816,8 @@ static int jmap_calendarevent_get(struct jmap_req *req)
                                            PTRARRAY_INITIALIZER,
                                            JMAPICAL_DATETIME_INITIALIZER,
                                            JMAPICAL_DATETIME_INITIALIZER,
-                                           0 /* reduce_participants */
+                                           0, /* reduce_participants */
+                                           NULL /* sched_userid */
     };
 
     construct_hashu64_table(&rock.jmapcache, 512, 0);
@@ -3926,7 +3931,7 @@ done:
     return r;
 }
 
-static int setcalendarevents_schedule(jmap_req_t *req,
+static int setcalendarevents_schedule(const char *sched_userid,
                                       const strarray_t *schedule_addresses,
                                       icalcomponent *oldical,
                                       icalcomponent *ical,
@@ -3971,7 +3976,7 @@ static int setcalendarevents_schedule(jmap_req_t *req,
         /* Send scheduling message. */
         if (strarray_find_case(schedule_addresses, organizer, 0) >= 0) {
             /* Organizer scheduling object resource */
-            sched_request(req->userid, schedule_addresses, organizer, oldical, ical);
+            sched_request(sched_userid, schedule_addresses, organizer, oldical, ical);
         } else {
             /* Attendee scheduling object resource */
             int omit_reply = 0;
@@ -3988,7 +3993,7 @@ static int setcalendarevents_schedule(jmap_req_t *req,
                 }
             }
             if (!omit_reply && strarray_size(schedule_addresses))
-                sched_reply(req->userid, schedule_addresses, oldical, ical);
+                sched_reply(sched_userid, schedule_addresses, oldical, ical);
         }
     }
 
@@ -4656,8 +4661,7 @@ static int setcalendarevents_create(jmap_req_t *req,
         if (!json_object_get(event, "created")) {
             json_object_set_new(event, "created", json_string(datestr));
         }
-        if (!json_object_get(event, "updated")) {
-            json_object_set_new(event, "updated", json_string(datestr));
+        if (!json_object_get(event, "updated")) { json_object_set_new(event, "updated", json_string(datestr));
         }
     }
 
@@ -4685,10 +4689,12 @@ static int setcalendarevents_create(jmap_req_t *req,
     }
 
     /* Handle scheduling. */
-    get_schedule_addresses(NULL, mboxname, req->userid, &schedule_addresses);
+    const char *sched_userid = caldav_is_secretarymode(mbox->name) ?
+        req->accountid : req->userid;
+    get_schedule_addresses(NULL, mboxname, sched_userid, &schedule_addresses);
     if (!is_draft && send_scheduling_messages) {
-        r = setcalendarevents_schedule(req, &schedule_addresses,
-                                       NULL, ical, JMAP_CREATE);
+        r = setcalendarevents_schedule(sched_userid, &schedule_addresses,
+                NULL, ical, JMAP_CREATE);
         if (r) goto done;
     }
 
@@ -5336,7 +5342,9 @@ static int setcalendarevents_update(jmap_req_t *req,
         else if (r) goto done;
     }
 
-    get_schedule_addresses(NULL, mbentry->name, req->userid, &schedule_addresses);
+    const char *sched_userid = caldav_is_secretarymode(mbox->name) ?
+        req->accountid : req->userid;
+    get_schedule_addresses(NULL, mbentry->name, sched_userid, &schedule_addresses);
 
     /* Check permissions. */
     if (!jmap_hasrights_mbentry(req, mbentry, JACL_READITEMS)) {
@@ -5456,8 +5464,8 @@ static int setcalendarevents_update(jmap_req_t *req,
 
     /* Handle scheduling. */
     if (!(record.system_flags & FLAG_DRAFT) && send_scheduling_messages) {
-        r = setcalendarevents_schedule(req, &schedule_addresses,
-                                       oldical, ical, JMAP_UPDATE);
+        r = setcalendarevents_schedule(sched_userid, &schedule_addresses,
+                oldical, ical, JMAP_UPDATE);
         if (r) goto done;
     }
 
@@ -5609,8 +5617,12 @@ static int setcalendarevents_destroy(jmap_req_t *req,
     }
 
     mbentry = jmap_mbentry_from_dav(req, &cdata->dav);
+    mboxname = xstrdup(mbentry->name);
+    resource = xstrdup(cdata->dav.resource);
 
-    get_schedule_addresses(NULL, mboxname, req->userid, &schedule_addresses);
+    const char *sched_userid = caldav_is_secretarymode(mboxname) ?
+        req->accountid : req->userid;
+    get_schedule_addresses(NULL, mboxname, sched_userid, &schedule_addresses);
 
     /* Check permissions. */
     if (!mbentry || !jmap_hasrights_mbentry(req, mbentry, JACL_READITEMS)) {
@@ -5625,9 +5637,6 @@ static int setcalendarevents_destroy(jmap_req_t *req,
             goto done;
         }
     }
-
-    mboxname = xstrdup(mbentry->name);
-    resource = xstrdup(cdata->dav.resource);
 
     /* Open mailbox for writing */
     r = jmap_openmbox(req, mboxname, &mbox, 1);
@@ -5656,8 +5665,8 @@ static int setcalendarevents_destroy(jmap_req_t *req,
 
     /* Handle scheduling. */
     if (!(record.system_flags & FLAG_DRAFT) && send_scheduling_messages) {
-        r = setcalendarevents_schedule(req, &schedule_addresses,
-                                       oldical, ical, JMAP_DESTROY);
+        r = setcalendarevents_schedule(sched_userid, &schedule_addresses,
+                oldical, ical, JMAP_DESTROY);
         if (r) goto done;
     }
 

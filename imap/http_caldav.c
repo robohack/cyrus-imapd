@@ -310,7 +310,7 @@ static const char *begin_icalendar(struct buf *buf, struct mailbox *mailbox,
                                    const char *desc, const char *color);
 static void end_icalendar(struct buf *buf);
 
-static int caldav_is_secretarymode(const char *mboxname);
+HIDDEN int caldav_is_secretarymode(const char *mboxname);
 
 #define ICALENDAR_CONTENT_TYPE "text/calendar; charset=utf-8"
 
@@ -7779,7 +7779,7 @@ static int proppatch_defaultalarm(xmlNodePtr prop, unsigned set,
     return 0;
 }
 
-static int caldav_is_secretarymode(const char *mboxname)
+HIDDEN int caldav_is_secretarymode(const char *mboxname)
 {
     mbname_t *mbname = mbname_from_intname(mboxname);
     int is_secretarymode = 0;

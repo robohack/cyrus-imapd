@@ -69,6 +69,8 @@ extern int caldav_is_personalized(struct mailbox *mailbox,
 
 extern char *caldav_scheddefault(const char *userid);
 
+extern int caldav_is_secretarymode(const char *mboxname);
+
 extern void caldav_attachment_url(struct buf *buf, const char *userid,
                                   const char *proto, const char *host,
                                   const char *managedid);
