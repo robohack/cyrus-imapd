@@ -1282,8 +1282,6 @@ imap_httpd_SOURCES = \
 	imap/json_support.h \
 	imap/mutex_fake.c \
 	imap/proxy.c \
-	imap/quic.c \
-	imap/quic.h \
 	imap/smtpclient.c \
 	imap/spool.c \
 	imap/sync_support.c \
@@ -1298,6 +1296,12 @@ imap_httpd_SOURCES = \
 	master/service.c
 
 imap_httpd_LDADD = $(LD_SIEVE_ADD) $(LD_SERVER_ADD)
+
+if HTTP3
+imap_httpd_SOURCES += \
+	imap/quic.c \
+	imap/quic.h
+endif
 
 if JMAP
 BUILT_SOURCES += \
