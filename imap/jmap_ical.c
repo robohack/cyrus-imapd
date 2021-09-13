@@ -445,7 +445,7 @@ HIDDEN int jmapical_context_open_attachments(struct jmapical_ctx *jmapctx)
         jmapctx->attachments.db = webdav_open_mailbox(jmapctx->attachments.mbox);
         if (!jmapctx->attachments.db) {
             xsyslog(LOG_ERR, "mailbox_open_webdav failed",
-                    "attachments=<%s>", jmapctx->attachments.mbox->name);
+                    "attachments=<%s>", mailbox_name(jmapctx->attachments.mbox));
             jmap_closembox(req, &jmapctx->attachments.mbox);
             jmapctx->attachments.db = NULL;
             return IMAP_INTERNAL;

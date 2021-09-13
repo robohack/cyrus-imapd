@@ -4550,7 +4550,7 @@ static int setcalendarevents_create(jmap_req_t *req,
     }
 
     /* Handle scheduling. */
-    const char *sched_userid = caldav_is_secretarymode(mbox->name) ?
+    const char *sched_userid = caldav_is_secretarymode(mailbox_name(mbox)) ?
         req->accountid : req->userid;
     get_schedule_addresses(NULL, mboxname, sched_userid, &schedule_addresses);
     if (!is_draft && send_scheduling_messages) {
@@ -5202,7 +5202,7 @@ static int setcalendarevents_update(jmap_req_t *req,
         else if (r) goto done;
     }
 
-    const char *sched_userid = caldav_is_secretarymode(mbox->name) ?
+    const char *sched_userid = caldav_is_secretarymode(mailbox_name(mbox)) ?
         req->accountid : req->userid;
     get_schedule_addresses(NULL, mbentry->name, sched_userid, &schedule_addresses);
 
