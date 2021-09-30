@@ -526,13 +526,13 @@ noinst_TEXINFOS = com_err/et/com_err.texinfo
 pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = libcyrus_min.pc libcyrus.pc libcyrus_sieve.pc libcyrus_imap.pc
 
+# 	com_err/et/init_et.c  (XXX example only? never used?)
 com_err_et_libcyrus_com_err_la_SOURCES = \
 	com_err/et/com_err.c \
 	com_err/et/com_err.h \
 	com_err/et/error_message.c \
 	com_err/et/error_table.h \
 	com_err/et/et_name.c \
-	com_err/et/init_et.c \
 	com_err/et/internal.h \
 	com_err/et/mit-sipb-copyright.h
 com_err_et_libcyrus_com_err_la_CFLAGS = $(AM_CFLAGS) $(CFLAG_VISIBILITY)
@@ -1355,10 +1355,10 @@ imap_pop3d_LDADD = $(LD_SIEVE_ADD) $(LD_SERVER_ADD)
 PROMDATAGEN = $(abs_top_srcdir)/imap/promdatagen
 
 imap/promdata.c: imap/promdata.p $(PROMDATAGEN)
-	$(AM_V_GEN)$(PROMDATAGEN) -c $@.NEW $< && mv $@.NEW $@
+	$(PERL) $(AM_V_GEN)$(PROMDATAGEN) -c $@.NEW $< && mv $@.NEW $@
 
 imap/promdata.h: imap/promdata.p $(PROMDATAGEN)
-	$(AM_V_GEN)$(PROMDATAGEN) -h $@.NEW $< && mv $@.NEW $@
+	$(PERL) $(AM_V_GEN)$(PROMDATAGEN) -h $@.NEW $< && mv $@.NEW $@
 
 imap_promstatsd_SOURCES = imap/promstatsd.c imap/mutex_fake.c
 imap_promstatsd_LDADD = $(LD_UTILITY_ADD)
@@ -1568,7 +1568,7 @@ lib/chartable.c: lib/mkchartable.pl lib/charset/unifix.txt \
 lib/imapopts.h: lib/imapopts.c
 
 lib/imapopts.c: lib/imapoptions tools/config2header
-	$(AM_V_GEN)$(top_srcdir)/tools/config2header CC="$(CC)" $(top_builddir)/lib/imapopts.c $(top_builddir)/lib/imapopts.h < $(top_srcdir)/lib/imapoptions
+	$(PERL) $(AM_V_GEN)$(top_srcdir)/tools/config2header CC="$(CC)" $(top_builddir)/lib/imapopts.c $(top_builddir)/lib/imapopts.h < $(top_srcdir)/lib/imapoptions
 
 imap_cvt_xlist_specialuse_SOURCES = imap/mutex_fake.c imap/cvt_xlist_specialuse.c
 imap_cvt_xlist_specialuse_LDADD = $(LD_UTILITY_ADD)
