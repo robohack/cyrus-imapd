@@ -27,7 +27,11 @@ CWARNFLAGS='-Wall -Wextra -Wimplicit -Wreturn-type -Wswitch -Wcomment -Wshadow -
 #
 # N.B.:  for pkgsrc the '-rpath' syntax is available in ${COMPILER_RPATH_FLAG}
 #
-ac_cv_lib_wrap_request_init=yes LDFLAGS="-L/usr/pkg/lib -Wl,-rpath,/usr/pkg/lib $LDSTATIC" CFLAGS="-I/usr/pkg/include -fstack-protector $CWARNFLAGS" $argv0dir/configure --enable-static --enable-autocreate --enable-idled --with-extraident=Planix-CyrusIMAP-2.3.x --sysconfdir=/etc --with-cyrus-user=cyrus --with-openssl=/usr --with-sasl=/usr/local --with-perl=/usr/pkg/bin/perl --enable-pcre --with-sqlite --with-ldap --with-libwrap --enable-backup --enable-murder --enable-nntp --without-zephyr --without-krb --without-krbdes --disable-gssapi --with-com-err=yes --enable-idled --with-staticsasl=/usr/pkg --prefix=/usr/local --mandir=/usr/local/share/man
+# N.B.:  we must use $PERL instead of '--with-perl=/path/to/perl' because the
+# configure script uses AC_CHECK_PROGS() which searches in the given path (or
+# $PATH) for the program given by '--with-perl' (which thus must be a basename).
+#
+ac_cv_lib_wrap_request_init=yes LDFLAGS="-L/usr/pkg/lib -Wl,-rpath,/usr/pkg/lib $LDSTATIC" CFLAGS="-I/usr/pkg/include -fstack-protector $CWARNFLAGS" PERL=/usr/pkg/bin/perl $argv0dir/configure --enable-static --enable-autocreate --enable-idled --with-extraident=Planix-CyrusIMAP-2.3.x --sysconfdir=/etc --with-cyrus-user=cyrus --with-openssl=/usr --with-sasl=/usr/local --enable-pcre --with-sqlite --with-ldap --with-libwrap --enable-backup --enable-murder --enable-nntp --without-zephyr --without-krb --without-krbdes --disable-gssapi --with-com-err=yes --enable-idled --with-staticsasl=/usr/pkg --prefix=/usr/local --mandir=/usr/local/share/man
 
 # Note:  remove config.status to re-configure without "gmake distclean"
 
